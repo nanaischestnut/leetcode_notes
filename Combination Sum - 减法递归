@@ -1,0 +1,203 @@
+# Combination Sum - 完整理解指南
+
+## 核心问题：为什么你的思路卡住了
+
+你写的代码有几个问题：
+1. `sum(candidate(0) + ...)` 语法错误，不知道怎么组合
+2. 没有明确的"停止条件"
+3. 同一个数可以**重复使用**，这是关键！
+
+## 问题本质：减法递归
+
+你的直觉完全正确！**这题的核心就是减法**。
+
+### 思路转换
+
+不要想"怎样组合出target"，而要想：
+- 从target开始
+- 每次选择一个候选数，从target中**减去它**
+- 继续用减法处理剩余的目标
+- 当target变成0，说明找到一个组合
+- 当target变成负数，说明这个分支不可行
+
+### 为什么需要递归（不能用迭代）
+
+**电话号码题**：每个数字必须处理一次 → 迭代可行
+**括号题**：有约束关系，需要做选择 → 递归可行
+**组合求和题**：①每个数可重复使用 ②需要追踪"当前已选的数" ③需要在多个分支间探索 → **必须递归**
+
+迭代无法处理"可以回溯重新选择"的情况。
+
+---
+
+## 完整解决方案
+
+```python
+class Solution:
+    def combinationSum(self, candidates: List[int], target: int) -> List[List[int]]:
+        result = []
+        
+        def backtrack(combination, remaining):
+            # Base case 1: found a valid combination
+            if remaining == 0:
+                result.append(combination[:])  # Add a copy
+                return
+            
+            # Base case 2: impossible (negative remaining)
+            if remaining < 0:
+                return
+            
+            # Try each candidate
+            for candidate in candidates:
+                # Choose: add candidate to combination
+                combination.append(candidate)
+                
+                # Explore: recursively solve for reduced target
+                backtrack(combination, remaining - candidate)
+                
+                # Unchoose: backtrack (remove the candidate)
+                combination.pop()
+        
+        backtrack([], target)
+        return result
+```
+
+### 代码各部分含义
+
+| 部分 | 意思 | 为什么需要 |
+|------|------|---------|
+| `combination` | 当前正在构造的组合 | 追踪我们选了哪些数 |
+| `remaining` | 剩余需要凑的值 | 判断是否找到答案或无法继续 |
+| `remaining == 0` | 成功条件 | 说明我们凑出了target |
+| `remaining < 0` | 失败剪枝 | 避免无意义的继续探索 |
+| `combination.append()` | 选择 | 尝试这个数 |
+| `backtrack(remaining - candidate)` | 递归探索 | 解决子问题 |
+| `combination.pop()` | 回溯 | 撤回选择，尝试其他可能性 |
+
+---
+
+## 执行过程演示（candidates = [2,3,6,7], target = 7）
+
+### 第一个分支：从2开始
+
+```
+backtrack([], 7)
+  ├─ 选择2
+  │  backtrack([2], 5)
+  │   ├─ 选择2
+  │   │  backtrack([2,2], 3)
+  │   │   ├─ 选择2
+  │   │   │  backtrack([2,2,2], 1)
+  │   │   │   ├─ 选择2: [2,2,2,2] → remaining = -1 ❌ 剪枝
+  │   │   │   ├─ 选择3: [2,2,2,3] → remaining = -2 ❌ 剪枝
+  │   │   │   └─ ... 都不行，回溯
+  │   │   ├─ 选择3
+  │   │   │  backtrack([2,2,3], 0) ✅ 找到！保存[2,2,3]
+  │   │   └─ 选择6,7: remaining不足，剪枝
+  │   └─ ...
+```
+
+关键观察：
+- 可以重复选2、3、6、7
+- 每次选择后，target立即减少
+- 当remaining < 0时立即停止这个分支
+- 找到答案后继续探索其他分支（找全所有答案）
+
+---
+
+## 三个核心概念
+
+### 1. 为什么可以重复使用数字
+
+看这行代码：
+```python
+for candidate in candidates:
+    backtrack(combination, remaining - candidate)
+```
+
+没有"跳过"当前candidate的逻辑，所以下一轮仍然会遍历整个candidates列表。这就允许了重复使用。
+
+对比N皇后（不重复使用）：
+```python
+for i in range(start, len(candidates)):  # ← 注意start！
+    backtrack(combination, i + 1)  # ← 下次从i+1开始
+```
+
+### 2. 为什么要pop()回溯
+
+如果不pop，combination会一直增长，后续分支的状态就污染了。
+
+```python
+combination.append(2)      # [2]
+backtrack(...)             # 探索选择2的所有分支
+combination.pop()          # 撤回2，恢复为[]
+combination.append(3)      # [3]
+backtrack(...)             # 现在探索选择3的分支
+```
+
+### 3. 为什么不用remaining < 0来筛选
+
+可以进一步优化（但初学阶段这样清晰）：
+```python
+for candidate in candidates:
+    if remaining - candidate >= 0:  # 只在可行时递归
+        combination.append(candidate)
+        backtrack(combination, remaining - candidate)
+        combination.pop()
+```
+
+这样避免了无意义的负数递归。
+
+---
+
+## 与前两题的对比
+
+| 题目 | 思路 | 关键约束 | 为什么选它 |
+|------|------|--------|---------|
+| 电话号码 | 迭代扩展 | 每个数字必须用一次 | 顺序确定，无选择 |
+| 生成括号 | 递归回溯 | 括号必须配对 | 有"决策点"：加( 还是)？ |
+| **组合求和** | **递归回溯** | **可重复，和要达标** | **可重复+多分支探索** |
+
+---
+
+## 推广到其他题目
+
+这个模式适用于所有"组合/排列/子集"问题：
+
+**子集 (Subsets)**
+```python
+def backtrack(index, combination):
+    result.append(combination[:])  # 每个状态都是答案
+    for i in range(index, len(nums)):
+        combination.append(nums[i])
+        backtrack(i + 1, combination)
+        combination.pop()
+```
+
+**排列 (Permutations)**
+```python
+def backtrack(combination):
+    if len(combination) == len(nums):
+        result.append(combination[:])
+        return
+    for num in nums:
+        if num not in combination:
+            combination.append(num)
+            backtrack(combination)
+            combination.pop()
+```
+
+关键区别在于"什么时候保存"、"怎样避免重复"，但框架完全相同。
+
+---
+
+## 最后：为什么这个思路这么难想到
+
+因为你之前学的迭代是"确定的前进"，而递归是"探索+回溯"。
+
+递归的核心思想：
+- 相信递归能解决"更小的问题"（remaining - candidate）
+- 只关注"当前这一步"该做什么（选哪个candidate）
+- 每个分支探索完后，撤回选择（pop）
+
+一旦掌握这个模式，你会发现它威力无穷——从组合、排列到N皇后、数独，都是这一套框架。
