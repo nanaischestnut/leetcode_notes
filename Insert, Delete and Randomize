@@ -1,0 +1,86 @@
+import random
+
+class RandomizedSet:
+    
+    def __init__(self):
+        """
+        初始化两个数据结构：
+        - val_to_index (Hash Map): 存储 {值 → 数组中的位置}
+        - nums (数组): 存储实际的值
+        """
+        self.val_to_index = {}  # {val: index in nums}
+        self.nums = []          # [val1, val2, val3, ...]
+    
+    def insert(self, val: int) -> bool:
+        """
+        插入一个值。如果值已存在，返回 False；否则返回 True。
+        
+        思路：
+        1. 检查 val 是否已在 Hash Map 中（O(1)）
+        2. 如果存在，返回 False
+        3. 如果不存在：
+           - 将 val 加入数组末尾
+           - 在 Hash Map 中记录 val 和它在数组中的位置
+           - 返回 True
+        """
+        if val not in self.val_to_index:
+            self.nums.append(val)
+            self.val_to_index[val] = len(self.nums) - 1
+            return True
+        return False
+    
+    def remove(self, val: int) -> bool:
+        """
+        删除一个值。如果值存在，返回 True；否则返回 False。
+        
+        思路（核心：替换法）：
+        1. 检查 val 是否在 Hash Map 中（O(1)）
+        2. 如果不存在，返回 False
+        3. 如果存在：
+           - 获取 val 在数组中的位置 (index)
+           - 获取数组的最后一个元素 (last_val)
+           - 将 last_val 移到 val 的位置（实现替换）
+           - 更新 Hash Map 中 last_val 的位置
+           - 删除数组最后的元素
+           - 从 Hash Map 中删除 val
+           - 返回 True
+        """
+        if val not in self.val_to_index:
+            return False
+        
+        # 获取 val 的位置和最后一个元素
+        index = self.val_to_index[val]
+        last_val = self.nums[-1]
+        
+        # 「魔法戏法」：把最后一个元素替换到要删除位置
+        self.nums[index] = last_val
+        self.val_to_index[last_val] = index
+        
+        # 删除数组末尾和 Hash Map 中的 val
+        self.nums.pop()
+        del self.val_to_index[val]
+        
+        return True
+    
+    def getRandom(self) -> int:
+        """
+        随机返回集合中的一个元素。
+        
+        思路：
+        使用 Python 的 random.choice() 从数组中随机选择一个元素。
+        由于数组中的每个元素都有相等的被选择概率，所以是均匀随机的。
+        """
+        return random.choice(self.nums)
+
+
+# ===== 测试代码示例 =====
+if __name__ == "__main__":
+    rs = RandomizedSet()
+    
+    print(rs.insert(1))      # 应该返回 True（1 被成功插入）
+    print(rs.remove(2))      # 应该返回 False（2 不存在）
+    print(rs.insert(2))      # 应该返回 True（2 被成功插入）
+    print(rs.getRandom())    # 应该返回 1 或 2
+    print(rs.remove(1))      # 应该返回 True（1 被成功删除）
+    print(rs.insert(2))      # 应该返回 False（2 已存在）
+    print(rs.getRandom())    # 应该返回 2
